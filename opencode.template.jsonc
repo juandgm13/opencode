@@ -1,0 +1,194 @@
+// Template de configuración para opencode 2.0.26 (rama release-2.0.26).
+// Copia lo que necesites a ~/.config/opencode/opencode.jsonc (global) o a opencode.jsonc del proyecto.
+// Todos los campos son opcionales; los valores mostrados son ejemplos, no defaults (los defaults se indican).
+{
+  "$schema": "https://opencode.ai/v2/cli.json",       // Esquema JSON para autocompletado/validación en el editor
+
+  // ── General ────────────────────────────────────────────────────────────────
+  "model": "ollama/qwen3-coder:30b",                   // Modelo por defecto "proveedor/modelo[#variante]"
+  "default_agent": "build",                            // Agente primario por defecto (build = defecto)
+  "shell": "/bin/bash",                                // Shell para la terminal y la herramienta shell
+  "username": "juan",                                  // Nombre mostrado en las conversaciones
+  "update": "notify",                                  // "disable" | "notify" | "auto": actualizaciones
+  "share": "manual",                                   // "manual" | "auto" | "disabled": compartir sesiones
+  "enterprise": { "url": "https://share.ejemplo.com" },// Servicio de compartir propio (enterprise)
+  "snapshots": true,                                   // Snapshots para deshacer/revertir cambios
+  "skills": ["./skills", "https://ejemplo.com/skills"],// Rutas/URLs extra donde buscar skills
+  "instructions": ["./AGENTS.md", "docs/reglas.md"],   // Ficheros/URLs extra de instrucciones para el modelo
+
+  // ── Compactación de contexto ───────────────────────────────────────────────
+  "compaction": {
+    "auto": true,                                      // Compactar automáticamente (default true)
+    "buffer": 5000,                                    // Tokens libres antes de compactar (default: max(10%, 16000))
+    "keep": { "tokens": 8000 }                         // Tokens recientes conservados literalmente (default 15000)
+  },
+
+  // ── Proveedores y modelos ──────────────────────────────────────────────────
+  "providers": {
+    "ollama": {
+      "name": "Ollama local",                          // Nombre mostrado del proveedor
+      "settings": {
+        "baseURL": "http://127.0.0.1:11434/v1",        // URL del servidor (default en Ollama)
+        "apiKey": "",                                  // API key si el servidor la pide
+        "timeout": false,                              // Límite de la petición completa en ms o false (default sin límite)
+        "headerTimeout": false,                        // Espera a la primera respuesta en ms o false (default 300000)
+        "chunkTimeout": false,                         // Espera entre trozos del stream en ms o false (default 300000)
+        "compaction": { "type": "summary" },           // "summary" (resumen por el modelo) | "native" (del proveedor)
+        "transport": "http"                            // "http" | "websocket"
+      },
+      "headers": { "X-Custom": "valor" },              // Cabeceras HTTP extra en cada petición
+      "body": { "keep_alive": "30m" },                 // Campos extra en el cuerpo JSON de cada petición
+      "models": {
+        "qwen3-coder:30b": {                           // Clave = id del modelo (para Ollama, el de `ollama list`)
+          "name": "Qwen3 Coder 30B (32k)",             // Nombre mostrado
+          "modelID": "qwen3-coder:30b",                // Id real enviado al proveedor (si la clave es un alias)
+          "family": "qwen",                            // Familia del modelo
+          "disabled": false,                           // Ocultar/deshabilitar el modelo
+          "limit": {
+            "context": 32768,                          // Ventana de contexto (usa tu num_ctx real)
+            "input": 30000,                            // Máximo de entrada (si difiere del contexto)
+            "output": 8192                             // Máximo de tokens de salida
+          },
+          "capabilities": {
+            "tools": true,                             // Soporta llamadas a herramientas
+            "input": ["text", "image"],                // Tipos de entrada admitidos
+            "output": ["text"]                         // Tipos de salida
+          },
+          "cost": {                                    // Coste en USD por millón de tokens (para estadísticas)
+            "input": 0, "output": 0,
+            "cache": { "read": 0, "write": 0 }
+          },
+          "compatibility": {                           // Ajustes para APIs "compatibles" con OpenAI
+            "maxTokensField": "max_tokens",            // "max_tokens" | "max_completion_tokens"
+            "reasoningField": "reasoning_content",     // Campo donde el servidor devuelve el razonamiento
+            "requireReasoning": false,                 // Enviar siempre el campo de razonamiento
+            "requireFinishReason": false,              // Exigir finish_reason en las respuestas
+            "requireAssistantAfterTool": false,        // Insertar mensaje assistant tras resultados de herramientas
+            "supportsPromptCacheKey": false            // El servidor acepta prompt_cache_key
+          },
+          "settings": { "compaction": { "type": "summary" } }, // Ajustes solo para este modelo
+          "headers": {},                               // Cabeceras solo para este modelo
+          "body": { "options": { "temperature": 0.2 } },// Cuerpo extra solo para este modelo
+          "variants": [                                // Variantes seleccionables (modelo#variante)
+            { "id": "creativo", "body": { "temperature": 0.9 } }
+          ]
+        }
+      }
+    },
+    "mi-proxy": {                                      // Proveedor propio
+      "canonical": "openai",                           // Hereda modelos/comportamiento de otro proveedor
+      "package": "@opencode/ai/providers/openai-compatible", // Paquete de implementación
+      "env": ["MI_PROXY_API_KEY"],                     // Variables de entorno con la API key
+      "settings": { "baseURL": "https://proxy.ejemplo.com/v1" }
+    }
+  },
+
+  // ── Agentes ────────────────────────────────────────────────────────────────
+  "agents": {
+    "build": { "model": "ollama/qwen3-coder:30b" },    // Sobrescribe un agente integrado
+    "revisor": {                                       // Agente propio
+      "description": "Revisa código sin modificarlo",  // Descripción (la usa el modelo para delegar)
+      "mode": "subagent",                              // "primary" | "subagent" | "all"
+      "model": "ollama/qwen3-coder:30b",               // Modelo del agente
+      "system": "Eres un revisor de código estricto.", // Prompt de sistema
+      "steps": 30,                                     // Máximo de pasos antes de forzar respuesta final
+      "color": "#4F9DFF",                              // Color en la interfaz (#RRGGBB)
+      "hidden": false,                                 // Ocultarlo de los selectores
+      "disabled": false,                               // Deshabilitarlo
+      "request": { "headers": {}, "body": {} },        // Cabeceras/cuerpo extra en sus peticiones
+      "permissions": [                                 // Reglas propias (se aplican sobre las globales)
+        { "action": "edit", "resource": "*", "effect": "deny" }
+      ]
+    }
+  },
+
+  // ── Permisos (la última regla que coincide gana; admite comodines *) ───────
+  "permissions": [
+    { "action": "*", "resource": "*", "effect": "ask" },          // Por defecto preguntar
+    { "action": "read", "resource": "*", "effect": "allow" },     // Leer libremente
+    { "action": "read", "resource": "*.env", "effect": "ask" },   // ...salvo .env
+    { "action": "shell", "resource": "git status*", "effect": "allow" }, // Comandos concretos
+    { "action": "edit", "resource": "*", "effect": "allow" },     // Editar/escribir ficheros
+    { "action": "webfetch", "resource": "*", "effect": "allow" }, // Otras acciones: grep, glob, websearch,
+    { "action": "external_directory", "resource": "*", "effect": "ask" } // subagent, question, ...
+  ],
+
+  // ── Comandos slash ─────────────────────────────────────────────────────────
+  "commands": {
+    "test": {
+      "template": "Ejecuta los tests y corrige los fallos: $ARGUMENTS", // Prompt enviado
+      "description": "Lanza y arregla tests",          // Descripción en el menú
+      "agent": "build",                                // Agente que lo ejecuta
+      "model": "ollama/qwen3-coder:30b",               // Modelo a usar
+      "subagent": false                                // Ejecutarlo como subagente
+    }
+  },
+
+  // ── MCP ────────────────────────────────────────────────────────────────────
+  "mcp": {
+    "timeout": { "startup": 30000, "catalog": 10000, "execution": 120000 }, // ms: arranque, listado, ejecución
+    "servers": {
+      "filesystem": {
+        "type": "local",                               // Servidor lanzado como proceso
+        "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "."],
+        "cwd": ".",                                    // Directorio de trabajo del proceso
+        "environment": { "DEBUG": "0" },               // Variables de entorno
+        "disabled": false,                             // Deshabilitarlo
+        "codemode": true,                              // Exponer sus tools vía Code Mode (default true)
+        "protocol": "legacy"                           // "legacy" | "auto" | "2026-07-28"
+      },
+      "remoto": {
+        "type": "remote",                              // Servidor por HTTP
+        "url": "https://mcp.ejemplo.com/mcp",
+        "headers": { "Authorization": "Bearer xxx" },  // Cabeceras HTTP
+        "oauth": false,                                // false o { client_id, client_secret, scope, callback_port, redirect_uri, auth_server_metadata_url }
+        "timeout": { "execution": 60000 }              // Timeouts propios
+      }
+    }
+  },
+
+  // ── Herramientas y entorno ─────────────────────────────────────────────────
+  "formatter": {                                       // true/false o configuración por formateador
+    "prettier": { "disabled": false, "extensions": [".ts", ".tsx"] },
+    "mi-fmt": { "command": ["mi-fmt", "$FILE"], "environment": {}, "extensions": [".foo"] }
+  },
+  "lsp": {                                             // true/false o configuración por servidor
+    "id-integrado": { "disabled": true },             // Desactiva un servidor integrado por su id
+    "mi-lsp": { "command": ["mi-lsp", "--stdio"], "extensions": [".foo"], "env": {}, "initialization": {} }
+  },
+  "watcher": { "ignore": ["node_modules/**", "dist/**"] }, // Rutas que el vigilante de ficheros ignora
+  "tool_output": { "max_lines": 2000, "max_bytes": 51200 }, // Truncado de la salida de herramientas
+  "media": {
+    "image": {
+      "auto_resize": true,                             // Redimensionar imágenes automáticamente
+      "max_width": 2000, "max_height": 2000,           // Tamaño máximo en píxeles
+      "max_base64_bytes": 5000000                      // Tamaño máximo codificado
+    }
+  },
+  "websearch": { "provider": "random" },               // false | { provider: "random"|"exa"|"tavily"|"firecrawl"|"parallel"|"tinyfish" }
+  "references": {                                      // Contexto externo disponible para el agente
+    "docs": "../documentacion",                        // Atajo: ruta local
+    "libreria": { "repository": "https://github.com/org/lib", "branch": "main", "description": "Código de lib" },
+    "notas": { "path": "~/notas", "description": "Notas personales", "hidden": false }
+  },
+  "plugins": [                                         // En orden; "-id" desactiva un plugin
+    "opencode-plugin-ejemplo",
+    { "package": "@org/plugin", "options": { "clave": "valor" } },
+    "-opencode.websearch.exa"
+  ],
+  "worktree": { "directory": "../worktrees" },         // Carpeta padre para nuevos worktrees
+  "warming": {                                         // Mantener caliente la caché del modelo (default false)
+    "prompt": "ping",                                  // Prompt de keep-alive
+    "interval": "4 minutes",                           // Cada cuánto (default "4 minutes")
+    "duration": "30 minutes"                           // Durante cuánto tras la última actividad (default "30 minutes")
+  },
+
+  // ── Experimental ───────────────────────────────────────────────────────────
+  "experimental": {
+    "portable_shell_scanner": false,                   // Escáner portable de permisos de shell (default false)
+    "subagent_depth": 1,                               // Profundidad máxima de subagentes anidados (default 1)
+    "policies": [                                      // Políticas de acceso, en orden
+      { "action": "provider.use", "resource": "openai", "effect": "deny" } // provider.use | tool.use | integration.use
+    ]
+  }
+}
